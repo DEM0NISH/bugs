@@ -2,9 +2,15 @@ from html import escape
 from pathlib import Path
 
 from bugtrace.models import Investigation
+from bugtrace.redaction import redact
+
+
+def redacted(investigation: Investigation) -> Investigation:
+    return Investigation.model_validate(redact(investigation.model_dump()))
 
 
 def markdown(investigation: Investigation) -> str:
+    investigation = redacted(investigation)
     lines = [f"# Investigation {investigation.case_id}", "", f"**Verdict:** {investigation.verdict}", "", investigation.summary, "", "## Evidence timeline", "", "| ID | Source | Time | Confidence | Evidence |", "| --- | --- | --- | --- | --- |"]
     for item in investigation.evidence:
         lines.append(f"| {item.id} | {item.source} | {item.timestamp} | {item.confidence} | `{item.content}` |")
@@ -20,6 +26,7 @@ def markdown(investigation: Investigation) -> str:
 
 
 def html_report(investigation: Investigation) -> str:
+    investigation = redacted(investigation)
     rows = "".join(f'<tr id="{escape(item.id)}"><th scope="row"><a href="#{escape(item.id)}">{escape(item.id)}</a></th><td>{escape(item.source)}</td><td>{escape(item.timestamp)}</td><td>{escape(item.confidence)}</td><td><code>{escape(str(item.content))}</code></td></tr>' for item in investigation.evidence)
     checks = "".join(f'<tr><th scope="row">{escape(item.invariant_id)}</th><td class="{"pass" if item.passed else "fail"}">{"PASS" if item.passed else "FAIL"}</td><td>{escape(item.summary)}</td></tr>' for item in investigation.invariants)
     hypotheses = "".join(hypothesis_html(item) for item in investigation.hypotheses)

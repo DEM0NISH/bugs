@@ -7,8 +7,10 @@ from pathlib import Path
 from bugtrace.collectors.logs import collect
 from bugtrace.collectors.sql import collect as collect_sql
 from bugtrace.evaluate import evaluate
+from bugtrace.investigation import investigate
 from bugtrace.redaction import redact, redact_text
 from bugtrace.regression import classify_xml, validate_test
+from bugtrace.report import write
 from scripts.check_no_comments import python_issues, text_issues
 
 
@@ -39,6 +41,41 @@ def test_redacts_gstin():
 def test_redacts_sensitive_dictionary_keys():
     value = redact({"password": "one", "token": "two", "secret": "three", "authorization": "four", "message": "ok"})
     assert [value[key] for key in ("password", "token", "secret", "authorization")] == ["[REDACTED]"] * 4
+
+
+def test_redacts_normalized_sensitive_keys_recursively():
+    value = redact({"request": {"access_token": "token-canary", "clientSecret": "secret-canary", "API-Key": "key-canary"}})
+    assert value["request"] == {"access_token": "[REDACTED]", "clientSecret": "[REDACTED]", "API-Key": "[REDACTED]"}
+
+
+def test_redacts_bearer_and_jwt_values():
+    bearer = "bearer_canary-1234567890"
+    jwt = "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJjYW5hcnkifQ.signature_canary123456"
+    value = redact_text(f"Bearer {bearer} jwt={jwt}")
+    assert bearer not in value
+    assert jwt not in value
+    assert "[REDACTED]" in value
+
+
+def test_end_to_end_canary_is_redacted_from_reports(tmp_path):
+    (tmp_path / "bug_reports").mkdir()
+    runtime = tmp_path / ".workspace" / "CANARY" / "runtime"
+    runtime.mkdir(parents=True)
+    (tmp_path / "bug_reports" / "CANARY.yaml").write_text("request_id: r1\n", encoding="utf-8")
+    api_canary = "CANARY-api-key-7f3a"
+    bearer_canary = "Bearer CANARY-bearer-2c9e"
+    jwt_canary = "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJjYW5hcnkifQ.CANARY-signature-8d2b"
+    event = {"request_id": "r1", "event": "request.received", "data": {"access_token": api_canary, "nested": {"authorization": bearer_canary}, "message": jwt_canary}}
+    (runtime / "service.jsonl").write_text(json.dumps(event) + "\n", encoding="utf-8")
+    investigation = investigate("CANARY", tmp_path)
+    investigation.evidence[0].content["late_access_token"] = api_canary
+    output = tmp_path / "reports"
+    write(investigation, output)
+    for report in output.iterdir():
+        content = report.read_text(encoding="utf-8")
+        assert api_canary not in content
+        assert bearer_canary not in content
+        assert jwt_canary not in content
 
 
 def test_log_collector_ignores_other_request_ids_and_skips_malformed(tmp_path):
