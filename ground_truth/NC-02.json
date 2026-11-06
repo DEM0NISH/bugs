@@ -1,0 +1,1 @@
+{"invariant_id":"evidence_presence","file":"","function":"","cause":"The request identifier is absent from logs and stored records.","expected_verdict":"insufficient_evidence"}

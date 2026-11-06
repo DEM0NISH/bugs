@@ -1,0 +1,23 @@
+title: Confirmed cancellation leaves credit reserved
+environment:
+  service: quote-service
+endpoint: /quotes/{id}/cancel
+method: POST
+headers:
+  Idempotency-Key: case-bt-04
+  X-Request-ID: req-bt-04
+body:
+  buyer_id: buyer-1
+  discount_percent: 0
+  lines:
+  - quantity: 1
+    unit_price: 500.0
+    description: steel
+request_id: req-bt-04
+expected:
+  credit_reserved: 0.0
+actual:
+  id: buyer-1
+  credit_limit: '100000.00'
+  credit_reserved: '590.00'
+reported_at: 2026-01-01 00:00:00+00:00

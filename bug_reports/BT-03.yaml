@@ -1,0 +1,23 @@
+title: Idempotent retry creates another quote
+environment:
+  service: quote-service
+endpoint: /quotes
+method: POST
+headers:
+  Idempotency-Key: case-bt-03
+  X-Request-ID: req-bt-03
+body:
+  buyer_id: buyer-1
+  discount_percent: 0
+  lines:
+  - quantity: 1
+    unit_price: 500.0
+    description: steel
+request_id: req-bt-03
+expected:
+  quote_count: 1
+actual:
+  first_id: 7cec8798-0455-4037-97b4-7faaf238f93e
+  retry_id: deaf7735-6430-4eeb-9d9e-f6215c846155
+  quote_count: 2
+reported_at: 2026-01-01 00:00:00+00:00

@@ -1,0 +1,1 @@
+{"invariant_id":"idempotency_uniqueness","file":"quote_service/main.py","function":"create_quote","cause":"The request path ignores existing keys and stores a new quote on every retry.","expected_verdict":"defect_indicated"}

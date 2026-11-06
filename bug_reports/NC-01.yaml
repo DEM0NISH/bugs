@@ -1,0 +1,21 @@
+title: No discount is due for this supplier
+environment:
+  service: quote-service
+endpoint: /quotes
+method: POST
+headers:
+  Idempotency-Key: case-nc-01
+  X-Request-ID: req-nc-01
+body:
+  buyer_id: buyer-1
+  discount_percent: 0
+  lines:
+  - quantity: 1
+    unit_price: 100.0
+    description: item
+request_id: req-nc-01
+expected:
+  total: 118.0
+actual:
+  total: 118.0
+reported_at: 2026-01-01 00:00:00+00:00
