@@ -49,6 +49,14 @@ def test_log_collector_ignores_other_request_ids_and_skips_malformed(tmp_path):
     assert skipped == 1
 
 
+def test_log_collector_skips_valid_non_object_json(tmp_path):
+    path = tmp_path / "service.jsonl"
+    path.write_text('[1,2]\nnull\n{"request_id":"r1","event":"ok"}\n', encoding="utf-8")
+    evidence, skipped = collect(path, "r1")
+    assert len(evidence) == 1
+    assert skipped == 2
+
+
 def test_sql_collector_rejects_a_write_statement(tmp_path):
     database = tmp_path / "sample.db"
     connection = sqlite3.connect(database)
