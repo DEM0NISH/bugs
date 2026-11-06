@@ -62,9 +62,9 @@ flowchart LR
 | NC-01 | Reporter expects a discount the supplier agreement does not grant | No defect found |
 | NC-02 | Reported request ID is absent from available evidence | Insufficient evidence |
 
-The baseline quote-service tests cover validation, ordinary pricing, stored values, credit limits and draft cancellation. Each seeded defect is designed to remain green under that baseline suite. The generated regression test checks the triggering path on the buggy and corrected Git references.
+The baseline quote-service tests cover validation, ordinary pricing, stored values, credit limits, cancellation races, and flushed JSONL logs. Each seeded defect is designed to remain green under that baseline suite. The generated regression test checks the triggering path on the buggy and corrected Git references.
 
-The evaluation table below is copied from `reports/evaluation.md` after running the evaluator. Sample size: six synthetic cases.
+The evaluation table below is copied from `reports/evaluation.md` after running the evaluator. Sample size: 6 synthetic cases; passed: 6/6.
 
 | Case | Expected verdict | Actual verdict | Result |
 | --- | --- | --- | --- |

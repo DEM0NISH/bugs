@@ -1,4 +1,3 @@
-import json
 import logging
 import os
 import uuid
@@ -9,7 +8,8 @@ from pathlib import Path
 from fastapi import FastAPI, Header, HTTPException, Request, Response
 from pydantic import BaseModel, Field
 
-from quote_service.db import connect, seed
+from quote_service.db import connect, immediate, seed
+from quote_service.event_log import JsonlEventWriter
 from quote_service.pricing import calculate
 
 
@@ -31,15 +31,16 @@ def now() -> str:
 
 def create_app(db_path: str | Path | None = None, log_path: str | Path | None = None) -> FastAPI:
     app = FastAPI(title="Quote Service")
-    connection = connect(db_path)
+    database_path = Path(db_path or os.environ.get("QUOTE_DB_PATH", ".workspace/quote_service.db")).resolve()
+    connection = connect(database_path)
     seed(connection)
     log_file = Path(log_path or os.environ.get("QUOTE_LOG_PATH", ".workspace/quote_service.jsonl"))
     log_file.parent.mkdir(parents=True, exist_ok=True)
+    event_writer = JsonlEventWriter(log_file)
 
     def emit(request_id: str, event: str, data: dict) -> None:
         record = {"ts": now(), "level": "INFO", "request_id": request_id, "event": event, "data": data}
-        with log_file.open("a", encoding="utf-8") as stream:
-            stream.write(json.dumps(record, default=str) + "\n")
+        event_writer.emit(record)
 
     @app.middleware("http")
     async def request_context(request: Request, call_next):
@@ -94,36 +95,45 @@ def create_app(db_path: str | Path | None = None, log_path: str | Path | None = 
     @app.post("/quotes/{quote_id}/confirm")
     def confirm_quote(quote_id: str, request: Request):
         request_id = request.state.request_id
-        quote = connection.execute("SELECT * FROM quotes WHERE id = ?", (quote_id,)).fetchone()
-        if not quote:
-            raise HTTPException(404, "Quote not found")
-        if quote["status"] != "draft":
-            raise HTTPException(409, "Quote is not a draft")
-        buyer = connection.execute("SELECT * FROM buyers WHERE id = ?", (quote["buyer_id"],)).fetchone()
-        total = Decimal(quote["total"])
-        if Decimal(buyer["credit_reserved"]) + total > Decimal(buyer["credit_limit"]):
-            raise HTTPException(409, "Credit limit exceeded")
-        timestamp = now()
-        connection.execute("UPDATE buyers SET credit_reserved = ? WHERE id = ?", (str(Decimal(buyer["credit_reserved"]) + total), buyer["id"]))
-        connection.execute("UPDATE quotes SET status='confirmed' WHERE id=?", (quote_id,))
-        connection.execute("INSERT INTO credit_ledger(buyer_id,quote_id,entry_type,amount,created_at) VALUES(?,?,?,?,?)", (buyer["id"], quote_id, "reserve", str(total), timestamp))
-        connection.commit()
+        with immediate(database_path) as transaction:
+            quote = transaction.execute("SELECT * FROM quotes WHERE id = ?", (quote_id,)).fetchone()
+            if not quote:
+                raise HTTPException(404, "Quote not found")
+            if quote["status"] != "draft":
+                raise HTTPException(409, "Quote is not a draft")
+            buyer = transaction.execute("SELECT * FROM buyers WHERE id = ?", (quote["buyer_id"],)).fetchone()
+            total = Decimal(quote["total"])
+            reserved = Decimal(buyer["credit_reserved"])
+            if reserved + total > Decimal(buyer["credit_limit"]):
+                raise HTTPException(409, "Credit limit exceeded")
+            timestamp = now()
+            quote_update = transaction.execute("UPDATE quotes SET status='confirmed' WHERE id=? AND status='draft'", (quote_id,))
+            if quote_update.rowcount != 1:
+                raise HTTPException(409, "Quote is not a draft")
+            buyer_update = transaction.execute("UPDATE buyers SET credit_reserved = ? WHERE id = ? AND credit_reserved = ?", (str(reserved + total), buyer["id"], buyer["credit_reserved"]))
+            if buyer_update.rowcount != 1:
+                raise HTTPException(409, "Buyer credit changed")
+            transaction.execute("INSERT INTO credit_ledger(buyer_id,quote_id,entry_type,amount,created_at) VALUES(?,?,?,?,?)", (buyer["id"], quote_id, "reserve", str(total), timestamp))
         emit(request_id, "credit.reserved", {"quote_id": quote_id, "amount": str(total)})
         return {"id": quote_id, "status": "confirmed", "total": str(total)}
 
     @app.post("/quotes/{quote_id}/cancel")
     def cancel_quote(quote_id: str, request: Request):
         request_id = request.state.request_id
-        quote = connection.execute("SELECT * FROM quotes WHERE id = ?", (quote_id,)).fetchone()
-        if not quote:
-            raise HTTPException(404, "Quote not found")
-        if quote["status"] == "cancelled":
-            return {"id": quote_id, "status": "cancelled"}
-        if quote["status"] == "confirmed":
-            buyer = connection.execute("SELECT * FROM buyers WHERE id = ?", (quote["buyer_id"],)).fetchone()
-            pass
-        connection.execute("UPDATE quotes SET status='cancelled' WHERE id=?", (quote_id,))
-        connection.commit()
+        released = None
+        with immediate(database_path) as transaction:
+            quote = transaction.execute("SELECT * FROM quotes WHERE id = ?", (quote_id,)).fetchone()
+            if not quote:
+                raise HTTPException(404, "Quote not found")
+            if quote["status"] == "cancelled":
+                return {"id": quote_id, "status": "cancelled"}
+            if quote["status"] == "confirmed":
+                pass
+            quote_update = transaction.execute("UPDATE quotes SET status='cancelled' WHERE id=? AND status=?", (quote_id, quote["status"]))
+            if quote_update.rowcount != 1:
+                raise HTTPException(409, "Quote status changed")
+        if released is not None:
+            emit(request_id, "credit.released", {"quote_id": quote_id, "amount": released})
         return {"id": quote_id, "status": "cancelled"}
 
     @app.get("/buyers/{buyer_id}/credit")
@@ -134,7 +144,10 @@ def create_app(db_path: str | Path | None = None, log_path: str | Path | None = 
         return dict(buyer)
 
     app.state.connection = connection
+    app.state.database_path = database_path
+    app.state.event_writer = event_writer
     app.state.emit = emit
+    app.router.add_event_handler("shutdown", event_writer.close)
     return app
 
 

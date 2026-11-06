@@ -1,6 +1,7 @@
 import json
 import os
 import shutil
+import signal
 import socket
 import stat
 import subprocess
@@ -62,10 +63,16 @@ def create_overrides(root: Path) -> None:
         emit(request_id, "idempotency.miss", {"key": idempotency_key})''', '        emit(request_id, "idempotency.miss", {"key": idempotency_key})').replace('connection.execute("INSERT INTO idempotency_keys VALUES(?,?,?)", (idempotency_key, quote_id, created_at))', 'connection.execute("INSERT INTO idempotency_keys(key,quote_id,created_at) VALUES(?,?,?)", (idempotency_key, quote_id, created_at))'),
             "db.py": base_db.replace('idempotency_key TEXT NOT NULL UNIQUE', 'idempotency_key TEXT NOT NULL').replace('idempotency_keys (key TEXT PRIMARY KEY, quote_id TEXT NOT NULL REFERENCES quotes(id), created_at TEXT NOT NULL)', 'idempotency_keys (id INTEGER PRIMARY KEY, key TEXT NOT NULL, quote_id TEXT NOT NULL REFERENCES quotes(id), created_at TEXT NOT NULL)'),
         },
-        "BT-04": {"main.py": base_main.replace('''            updated = Decimal(buyer["credit_reserved"]) - Decimal(quote["total"])
-            connection.execute("UPDATE buyers SET credit_reserved = ? WHERE id = ?", (str(updated), quote["buyer_id"]))
-            connection.execute("INSERT INTO credit_ledger(buyer_id,quote_id,entry_type,amount,created_at) VALUES(?,?,?,?,?)", (quote["buyer_id"], quote_id, "release", quote["total"], now()))
-            emit(request_id, "credit.released", {"quote_id": quote_id, "amount": quote["total"]})''', '            updated = Decimal(buyer["credit_reserved"])') .replace('            updated = Decimal(buyer["credit_reserved"])\n', '            pass\n')},
+        "BT-04": {"main.py": base_main.replace('''            if quote["status"] == "confirmed":
+                buyer = transaction.execute("SELECT * FROM buyers WHERE id = ?", (quote["buyer_id"],)).fetchone()
+                reserved = Decimal(buyer["credit_reserved"])
+                total = Decimal(quote["total"])
+                buyer_update = transaction.execute("UPDATE buyers SET credit_reserved = ? WHERE id = ? AND credit_reserved = ?", (str(reserved - total), quote["buyer_id"], buyer["credit_reserved"]))
+                if buyer_update.rowcount != 1:
+                    raise HTTPException(409, "Buyer credit changed")
+                transaction.execute("INSERT INTO credit_ledger(buyer_id,quote_id,entry_type,amount,created_at) VALUES(?,?,?,?,?)", (quote["buyer_id"], quote_id, "release", quote["total"], now()))
+                released = quote["total"]''', '''            if quote["status"] == "confirmed":
+                pass''')},
     }
     for case_id, files in templates.items():
         override_dir = root / "quote_service_defects" / case_id
@@ -87,7 +94,7 @@ def scenario(case_id: str, repository: Path, runtime: Path, report: dict) -> Non
     port = free_port()
     env = os.environ.copy()
     env.update({"QUOTE_DB_PATH": str(database), "QUOTE_LOG_PATH": str(log_path)})
-    process = subprocess.Popen([sys.executable, "-m", "uvicorn", "quote_service.main:app", "--host", "127.0.0.1", "--port", str(port)], cwd=repository, env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    process = subprocess.Popen([sys.executable, "-m", "uvicorn", "quote_service.main:app", "--host", "127.0.0.1", "--port", str(port)], cwd=repository, env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, creationflags=subprocess.CREATE_NEW_PROCESS_GROUP if os.name == "nt" else 0)
     base_url = f"http://127.0.0.1:{port}"
     try:
         for _ in range(80):
@@ -126,12 +133,13 @@ def scenario(case_id: str, repository: Path, runtime: Path, report: dict) -> Non
         if case_id == "BT-02":
             report["actual"] = {"total": first.json().get("total")}
     finally:
-        process.terminate()
-        try:
-            process.wait(timeout=5)
-        except subprocess.TimeoutExpired:
-            process.kill()
-            process.wait(timeout=5)
+        if process.poll() is None:
+            process.send_signal(signal.CTRL_BREAK_EVENT if os.name == "nt" else signal.SIGINT)
+            try:
+                process.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                process.kill()
+                process.wait(timeout=5)
 
 
 def build_case(root: Path, case_id: str) -> None:

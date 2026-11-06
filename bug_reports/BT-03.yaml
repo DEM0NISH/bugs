@@ -17,7 +17,7 @@ request_id: req-bt-03
 expected:
   quote_count: 1
 actual:
-  first_id: 7cec8798-0455-4037-97b4-7faaf238f93e
-  retry_id: deaf7735-6430-4eeb-9d9e-f6215c846155
+  first_id: f3b3e38a-6a14-45b3-bd7f-fa06a51f4b1c
+  retry_id: c18886ad-4421-466b-a6cd-f8328fd20b7e
   quote_count: 2
 reported_at: 2026-01-01 00:00:00+00:00

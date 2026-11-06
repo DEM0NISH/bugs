@@ -1,1 +1,1 @@
-{"invariant_id":"pricing_math","file":"quote_service/pricing.py","function":"calculate","cause":"GST is rounded for each quote line before the amounts are summed.","expected_verdict":"defect_indicated"}
+{"invariant_id":"pricing_math","file":"quote_service/pricing.py","function":"calculate","line":12,"cause":"GST is rounded for each quote line before the amounts are summed.","expected_verdict":"defect_indicated"}
