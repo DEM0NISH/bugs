@@ -12,7 +12,8 @@ from quote_service.main import create_app
 @pytest.fixture
 def client(tmp_path):
     app = create_app(tmp_path / "quotes.db", tmp_path / "events.jsonl")
-    return TestClient(app)
+    with TestClient(app) as test_client:
+        yield test_client
 
 
 def body(quantity=1, price="100.00", discount=0, buyer="buyer-1"):
@@ -182,8 +183,8 @@ def test_unknown_buyer_credit_is_rejected(client):
 
 def test_request_events_are_written_as_json_lines(client, tmp_path):
     log_path = tmp_path / "events.jsonl"
-    test_client = TestClient(create_app(tmp_path / "logs.db", log_path))
-    test_client.post("/quotes", headers={"Idempotency-Key": "logs", "X-Request-ID": "logs-request"}, json=body())
+    with TestClient(create_app(tmp_path / "logs.db", log_path)) as test_client:
+        test_client.post("/quotes", headers={"Idempotency-Key": "logs", "X-Request-ID": "logs-request"}, json=body())
     lines = [line for line in log_path.read_text(encoding="utf-8").splitlines() if line]
     assert any('"event": "pricing.total"' in line for line in lines)
     assert any('"request_id": "logs-request"' in line for line in lines)

@@ -1,4 +1,3 @@
-import json
 import logging
 import os
 import uuid
@@ -10,6 +9,7 @@ from fastapi import FastAPI, Header, HTTPException, Request, Response
 from pydantic import BaseModel, Field
 
 from quote_service.db import connect, immediate, seed
+from quote_service.event_log import JsonlEventWriter
 from quote_service.pricing import calculate
 
 
@@ -36,11 +36,11 @@ def create_app(db_path: str | Path | None = None, log_path: str | Path | None = 
     seed(connection)
     log_file = Path(log_path or os.environ.get("QUOTE_LOG_PATH", ".workspace/quote_service.jsonl"))
     log_file.parent.mkdir(parents=True, exist_ok=True)
+    event_writer = JsonlEventWriter(log_file)
 
     def emit(request_id: str, event: str, data: dict) -> None:
         record = {"ts": now(), "level": "INFO", "request_id": request_id, "event": event, "data": data}
-        with log_file.open("a", encoding="utf-8") as stream:
-            stream.write(json.dumps(record, default=str) + "\n")
+        event_writer.emit(record)
 
     @app.middleware("http")
     async def request_context(request: Request, call_next):
@@ -152,7 +152,9 @@ def create_app(db_path: str | Path | None = None, log_path: str | Path | None = 
 
     app.state.connection = connection
     app.state.database_path = database_path
+    app.state.event_writer = event_writer
     app.state.emit = emit
+    app.router.add_event_handler("shutdown", event_writer.close)
     return app
 
 
