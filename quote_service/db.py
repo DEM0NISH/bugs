@@ -1,16 +1,32 @@
 import os
 import sqlite3
+from contextlib import contextmanager
 from pathlib import Path
 
 
-def connect(path: str | Path | None = None) -> sqlite3.Connection:
+def connect(path: str | Path | None = None, initialize_schema: bool = True) -> sqlite3.Connection:
     target = Path(path or os.environ.get("QUOTE_DB_PATH", ".workspace/quote_service.db"))
     target.parent.mkdir(parents=True, exist_ok=True)
     connection = sqlite3.connect(target, check_same_thread=False)
     connection.row_factory = sqlite3.Row
     connection.execute("PRAGMA foreign_keys = ON")
-    initialize(connection)
+    if initialize_schema:
+        initialize(connection)
     return connection
+
+
+@contextmanager
+def immediate(path: str | Path):
+    connection = connect(path, initialize_schema=False)
+    try:
+        connection.execute("BEGIN IMMEDIATE")
+        yield connection
+        connection.commit()
+    except BaseException:
+        connection.rollback()
+        raise
+    finally:
+        connection.close()
 
 
 def initialize(connection: sqlite3.Connection) -> None:
