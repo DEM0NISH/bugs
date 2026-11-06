@@ -23,6 +23,14 @@ python -m bugtrace investigate BT-01 --approve
 python -m bugtrace evaluate
 ```
 
+## Hosted results site
+
+The results dashboard uses a static frontend on Vercel and the read-only results API on Render. The Vercel project root is `web`; no frontend build command is required. The API reads the checked-in report files and evaluation output, so it does not need a database or generated demo workspace.
+
+To deploy the backend, connect this repository to Render and create a Blueprint from `render.yaml`. Render starts `bugtrace.web:app` and checks `/api/health`. To deploy the frontend, create a Vercel project from this repository with `web` as its root directory. The Vercel rewrite forwards `/api/*` requests to `https://bugtrace-lite-api.onrender.com`; if Render assigns a different service subdomain, update `web/vercel.json` to match it before deploying the frontend.
+
+The dashboard lists the six synthetic cases, shows the evaluation summary, and opens each generated HTML investigation report. It includes loading and API error states and adapts to mobile screens. It does not accept customer incident data or run new investigations from the browser.
+
 The demo builder creates synthetic repositories and runtime data under `.workspace/`. Reports are written under `reports/`. The evaluator compares six synthetic cases with the evaluator-only ground truth files.
 
 ## Example report excerpt
