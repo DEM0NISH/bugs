@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#f4f2eb">
+    <meta name="description" content="Review BugTrace synthetic investigation findings and offline evaluation results.">
+    <title>BugTrace · Investigation desk</title>
+    <link rel="stylesheet" href="./styles.css">
+    <script src="./preview-data.js"></script>
+    <script src="./app.js" defer></script>
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="/" aria-label="BugTrace home">
+        <span class="brand-mark" aria-hidden="true">B</span>
+        <span>BugTrace <span class="brand-light">/ results desk</span></span>
+      </a>
+      <div class="top-meta"><span class="status-dot" aria-hidden="true"></span><span id="connection-status">Connecting to results API</span></div>
+    </header>
+    <main class="layout">
+      <aside class="sidebar" aria-label="Investigation cases">
+        <div class="sidebar-heading"><span class="eyebrow">Workspace</span><span class="case-count" id="case-count">—</span></div>
+        <h2>Investigations</h2>
+        <nav id="case-list" class="case-list" aria-label="Cases">
+          <div class="loading-row"><span class="loader" aria-hidden="true"></span>Loading cases</div>
+        </nav>
+        <div class="sidebar-foot"><span class="eyebrow">Run mode</span><p>Offline rules<br><span>Sample data only</span></p></div>
+      </aside>
+      <section class="content" aria-labelledby="page-title">
+        <div class="content-head">
+          <div><span class="eyebrow">Engineering review · synthetic scenarios</span><h1 id="page-title">Investigation results</h1><p class="intro">A readable record of what the evidence supports across six sample cases.</p></div>
+          <a class="text-link" id="evaluation-link" href="/api/evaluation" target="_blank" rel="noreferrer">View evaluation JSON <span aria-hidden="true">↗</span></a>
+        </div>
+        <div class="summary" aria-live="polite">
+          <div class="summary-main"><span class="eyebrow">Offline evaluation</span><strong id="score">—</strong><span id="score-caption">Loading case outcomes</span></div>
+          <div class="summary-breakdown" id="breakdown"><span class="loader" aria-hidden="true"></span></div>
+        </div>
+        <section class="case-section" aria-labelledby="selected-title">
+          <div class="section-heading"><div><span class="eyebrow">Selected case</span><h2 id="selected-title">Choose an investigation</h2></div><span class="verdict" id="selected-verdict">Waiting for results</span></div>
+          <p class="case-description" id="selected-description">The report will show its evidence timeline, invariant checks, hypotheses, and limitations.</p>
+          <div class="report-frame-wrap" id="report-wrap" hidden>
+            <iframe id="report-frame" class="report-frame" title="Selected investigation report" sandbox="" loading="lazy"></iframe>
+          </div>
+          <div class="empty-state" id="empty-state"><span class="empty-index">01 — 06</span><p>Select a case from the left to inspect its report.</p></div>
+          <div class="error-state" id="error-state" role="alert" hidden><strong>Results are unavailable right now.</strong><p id="error-message">The report service did not respond.</p><button type="button" id="retry">Try again</button></div>
+        </section>
+        <footer class="page-foot"><span>BugTrace Lite</span><span>Six synthetic cases · no customer telemetry</span><a href="https://github.com/DEM0NISH/bugs" target="_blank" rel="noreferrer">Source repository ↗</a></footer>
+      </section>
+    </main>
+  </body>
+</html>

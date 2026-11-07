@@ -1,0 +1,1 @@
+{"invariant_id":"pricing_math","file":"quote_service/pricing.py","function":"calculate","line":12,"cause":"The multi-line branch omits the supplier discount before tax.","expected_verdict":"defect_indicated"}

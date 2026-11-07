@@ -1,0 +1,24 @@
+title: Multi-line quote ignores supplier discount
+environment:
+  service: quote-service
+endpoint: /quotes
+method: POST
+headers:
+  Idempotency-Key: case-bt-01
+  X-Request-ID: req-bt-01
+body:
+  buyer_id: buyer-1
+  discount_percent: 5
+  lines:
+  - quantity: 100
+    unit_price: 500.0
+    description: steel
+  - quantity: 10
+    unit_price: 500.0
+    description: cement
+request_id: req-bt-01
+expected:
+  total: 61655.0
+actual:
+  total: '64900.00'
+reported_at: 2026-01-01 00:00:00+00:00

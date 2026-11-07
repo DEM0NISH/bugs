@@ -1,0 +1,11 @@
+title: Request cannot be located
+environment:
+  service: quote-service
+endpoint: /quotes
+method: POST
+headers: {}
+body: {}
+request_id: missing-request-id
+expected: {}
+actual: {}
+reported_at: 2026-01-01 00:00:00+00:00

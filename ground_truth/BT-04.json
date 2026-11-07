@@ -1,0 +1,1 @@
+{"invariant_id":"credit_ledger_balance","file":"quote_service/main.py","function":"cancel_quote","line":121,"cause":"The confirmed cancellation path omits the credit release ledger entry.","expected_verdict":"defect_indicated"}

@@ -1,0 +1,24 @@
+title: GST rounds each line before summing
+environment:
+  service: quote-service
+endpoint: /quotes
+method: POST
+headers:
+  Idempotency-Key: case-bt-02
+  X-Request-ID: req-bt-02
+body:
+  buyer_id: buyer-1
+  discount_percent: 0
+  lines:
+  - quantity: 1
+    unit_price: 10.25
+    description: part-a
+  - quantity: 1
+    unit_price: 10.25
+    description: part-b
+request_id: req-bt-02
+expected:
+  total: 24.19
+actual:
+  total: '24.20'
+reported_at: 2026-01-01 00:00:00+00:00

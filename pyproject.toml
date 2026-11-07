@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "bugtrace-lite"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = ["fastapi", "uvicorn", "httpx", "pydantic", "pyyaml", "jinja2"]
+
+[project.optional-dependencies]
+test = ["pytest"]
+llm = ["anthropic"]
+
+[project.scripts]
+bugtrace = "bugtrace.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["bugtrace*", "quote_service*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests", "quote_service/tests"]
+addopts = "-q --basetemp=.pytest_tmp"

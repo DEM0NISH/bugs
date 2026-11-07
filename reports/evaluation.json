@@ -1,0 +1,41 @@
+{
+  "sample_size": 6,
+  "results": [
+    {
+      "case_id": "BT-01",
+      "expected": "defect_indicated",
+      "actual": "defect_indicated",
+      "pass": true
+    },
+    {
+      "case_id": "BT-02",
+      "expected": "defect_indicated",
+      "actual": "defect_indicated",
+      "pass": true
+    },
+    {
+      "case_id": "BT-03",
+      "expected": "defect_indicated",
+      "actual": "defect_indicated",
+      "pass": true
+    },
+    {
+      "case_id": "BT-04",
+      "expected": "defect_indicated",
+      "actual": "defect_indicated",
+      "pass": true
+    },
+    {
+      "case_id": "NC-01",
+      "expected": "no_defect_found",
+      "actual": "no_defect_found",
+      "pass": true
+    },
+    {
+      "case_id": "NC-02",
+      "expected": "insufficient_evidence",
+      "actual": "insufficient_evidence",
+      "pass": true
+    }
+  ]
+}
