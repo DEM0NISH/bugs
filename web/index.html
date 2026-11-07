@@ -6,8 +6,9 @@
     <meta name="theme-color" content="#f4f2eb">
     <meta name="description" content="Review BugTrace synthetic investigation findings and offline evaluation results.">
     <title>BugTrace · Investigation desk</title>
-    <link rel="stylesheet" href="/styles.css">
-    <script src="/app.js" defer></script>
+    <link rel="stylesheet" href="./styles.css">
+    <script src="./preview-data.js"></script>
+    <script src="./app.js" defer></script>
   </head>
   <body>
     <header class="topbar">
@@ -29,7 +30,7 @@
       <section class="content" aria-labelledby="page-title">
         <div class="content-head">
           <div><span class="eyebrow">Engineering review · synthetic scenarios</span><h1 id="page-title">Investigation results</h1><p class="intro">A readable record of what the evidence supports across six sample cases.</p></div>
-          <a class="text-link" href="/api/evaluation" target="_blank" rel="noreferrer">View evaluation JSON <span aria-hidden="true">↗</span></a>
+          <a class="text-link" id="evaluation-link" href="/api/evaluation" target="_blank" rel="noreferrer">View evaluation JSON <span aria-hidden="true">↗</span></a>
         </div>
         <div class="summary" aria-live="polite">
           <div class="summary-main"><span class="eyebrow">Offline evaluation</span><strong id="score">—</strong><span id="score-caption">Loading case outcomes</span></div>

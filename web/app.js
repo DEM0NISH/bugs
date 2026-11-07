@@ -27,7 +27,9 @@ function setSelected(caseData) {
   selectedDescription.textContent = caseData.description || "The findings below are based on the evidence available for this request.";
   selectedVerdict.textContent = displayVerdict(caseData.actual);
   selectedVerdict.dataset.verdict = caseData.actual;
-  reportFrame.src = `/api/reports/${encodeURIComponent(caseData.case_id)}`;
+  reportFrame.src = window.location.protocol === "file:"
+    ? `../reports/${encodeURIComponent(caseData.case_id)}.html`
+    : `/api/reports/${encodeURIComponent(caseData.case_id)}`;
   reportFrame.title = `${caseData.case_id} investigation report`;
   reportWrap.hidden = false;
   emptyState.hidden = true;
@@ -100,4 +102,10 @@ async function loadResults() {
 }
 
 document.querySelector("#retry").addEventListener("click", loadResults);
-loadResults();
+if (window.location.protocol === "file:" && window.BUGTRACE_PREVIEW_RESULTS) {
+  document.querySelector("#evaluation-link").href = "../reports/evaluation.md";
+  document.querySelector("#evaluation-link").removeAttribute("target");
+  renderCases(window.BUGTRACE_PREVIEW_RESULTS);
+} else {
+  loadResults();
+}
